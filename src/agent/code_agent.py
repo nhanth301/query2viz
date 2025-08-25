@@ -3,6 +3,8 @@ from langchain_openai import ChatOpenAI
 from langchain_experimental.tools import PythonREPLTool
 from langchain import hub
 import subprocess
+from dotenv import load_dotenv
+load_dotenv()
 
 class PythonDashboardEngine:
     """
@@ -31,6 +33,7 @@ class PythonDashboardEngine:
         base_prompt = hub.pull("langchain-ai/openai-functions-template")
         self.prompt = base_prompt.partial(instructions=self.instructions)
         self.agent_executor = None
+        self.initialize()
         
     def initialize(self):
         agent = create_openai_functions_agent(ChatOpenAI(model=self.llm, temperature=0), self.tools, self.prompt)
@@ -69,3 +72,7 @@ class PythonDashboardEngine:
 
         command = "streamlit run app.py"
         proc = subprocess.Popen([command], shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
+
+if __name__ == '__main__':
+    engine = PythonDashboardEngine('gpt-4o-mini')
+    print(engine.prompt)
