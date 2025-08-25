@@ -54,4 +54,6 @@ class SQLQueryEngine:
 
 if __name__ == '__main__':
     engine = SQLQueryEngine('gpt-4o-mini',sql_db)
-    print(engine.prompt)
+    output = engine.get_query_data('Number of orders per country in 2022?')
+    print("========")
+    print(output)
