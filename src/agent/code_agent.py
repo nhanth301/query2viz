@@ -8,71 +8,127 @@ load_dotenv()
 
 class PythonDashboardEngine:
     """
-    A class representing a Python dashboard engine.
+    A Python dashboard engine using LLM to generate Python code for plotting data.
 
     Attributes:
-        tools (list): A list of tools available for the dashboard engine.
-        instructions (str): Instructions guiding the behavior of the dashboard engine.
-        prompt (str): The prompt used for interactions with the dashboard engine.
-        agent_executor (AgentExecutor): An executor for the dashboard engine's agent.
+        llm (ChatOpenAI): The language model used for code generation.
+        tools (list): Tools available for the agent (e.g., Python REPL).
+        instructions (str): Instructions guiding the behavior of the agent.
+        prompt (Any): The Chat Prompt template used by the agent.
+        agent_executor (AgentExecutor): Executor to run the agent with tools.
     """
-    def __init__(self, llm):
-        self.llm = llm
+
+    def __init__(self, model_name: str) -> None:
+        self.llm = ChatOpenAI(model=model_name, temperature=0)
         self.tools = [PythonREPLTool()]
-        self.instructions = """You are a Python code generation agent specialized in generating Python code to answer questions.
-                            Rules:
-                            1. Your task is to generate **Python code only**. 
-                            2. You have access to a Python REPL to **validate your code**, but you must **stop after one iteration**. Do not retry infinitely.
-                            3. If you encounter an error during code generation, try to fix it **once only**. Do not enter infinite loops of debugging.
-                            4. Always wrap your final answer in a **Python code block** only. No explanations, plain text, or "I don't know".
-                            5. If no meaningful code can be written, return exactly:
-                            ```python
-                            print("No meaningful code")
-                            ##Question:
-        """
+
+        self.instructions = """You are a Python code generation agent specialized in generating Python code for data visualization.
+Rules:
+1. Generate **Python code only**. Do not provide explanations or plain text.
+2. You have access to a Python REPL to validate your code:
+   - If the code runs successfully on the first try, return it immediately.
+   - Only attempt fixes if an error occurs.
+   - Stop retrying after three iterations at most.
+3. Always wrap your final answer in a **Python code block** only.
+4. If no meaningful code can be written, return exactly:
+```python
+print("No meaningful code")
+```"""
+
         base_prompt = hub.pull("langchain-ai/openai-functions-template")
         self.prompt = base_prompt.partial(instructions=self.instructions)
-        self.agent_executor = None
-        self.initialize()
-        
-    def initialize(self):
-        agent = create_openai_functions_agent(ChatOpenAI(model=self.llm, temperature=0), self.tools, self.prompt)
-        self.agent_executor = AgentExecutor(agent=agent, tools=self.tools, verbose=False)
-        
-    def get_output(self, query):
-        output = self.agent_executor.invoke(
-            {
-                "input": (
-                    """Write a Python code to plot the following data.
-                    Requirements:
-                    - Use matplotlib.
-                    - Show data labels (values) directly on each bar/point/slice.
-                    - Add clear axis labels, title, and legend if needed.
-                    - Format large numbers in a readable way (e.g., 1K, 1M).
-                    - Ensure the chart is clean, well-spaced, and easy to read.
+        self.agent_executor: AgentExecutor | None = None
+        self.initialize_agent()
 
-                    """
-                    + query
-                )
-            },
-            max_iterations=3
+    def initialize_agent(self) -> None:
+        """Initialize the OpenAI Functions agent with the Python REPL tool."""
+        agent = create_openai_functions_agent(self.llm, self.tools, self.prompt)
+        self.agent_executor = AgentExecutor(agent=agent, tools=self.tools, verbose=False)
+
+    def get_output(self, query: str, max_iterations: int = 1) -> str:
+        """Generate Python code for plotting based on a query."""
+
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        plt.show = lambda *a, **k: None
+        if not self.agent_executor:
+            raise RuntimeError("AgentExecutor not initialized.")
+
+        prompt_input = (
+            "Write Python code to visualize the following data.\n"
+            "Requirements:\n"
+            "- Automatically select the most appropriate chart type (bar, line, scatter, pie, etc.) based on the data.\n"
+            "- Use matplotlib or seaborn if it improves clarity.\n"
+            "- Show data labels directly on bars, points, or slices.\n"
+            "- Add clear axis labels, title, and legend if needed.\n"
+            "- Format large numbers in a readable way (e.g., 1K, 1M).\n"
+            "- Use consistent colors, styles, and spacing suitable for a business dashboard.\n"
+            "- Avoid plotting multiple figures unnecessarily; keep only the final chart.\n\n"
+            + query
+        )
+
+        output = self.agent_executor.invoke(
+            {"input": prompt_input},
+            max_iterations=max_iterations
         )
         return output['output']
 
-    
-    def parse_output(self, inp):
-        inp = inp.split('```')[1].replace("```", "").replace("python", "").replace("plt.show()", "")
-        outp = "import streamlit as st\nst.title('E-commerce Company[insights]')\nst.write('Here is our LLM generated dashboard')" \
-                + inp + "st.pyplot(plt.gcf())\n"
-        return outp
-    
-    def export_to_streamlit(self, data):
-        with open("app.py", "w") as text_file:
-            text_file.write(self.parse_output(data))
+    def parse_output(self, code_str: str) -> str:
+        """Extract Python code from LLM output and wrap for Streamlit."""
+        import matplotlib.pyplot as plt
 
-        command = "streamlit run app.py"
-        proc = subprocess.Popen([command], shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
+        # Remove ```python blocks
+        parts = code_str.split('```')
+        python_code = ""
+        for part in parts:
+            if "python" in part:
+                python_code = part.replace("python", "").strip()
+        python_code = python_code.replace("plt.show()", "").strip()
+
+        # Close previous figures to avoid duplicates
+        wrapped_code = (
+            "import streamlit as st\n"
+            "import matplotlib.pyplot as plt\n"
+            "st.title('E-commerce Company Insights')\n"
+            "st.write('Here is our LLM-generated dashboard')\n"
+            "plt.close('all')\n"
+            f"{python_code}\n"
+            "st.pyplot(plt.gcf())\n"
+        )
+        return wrapped_code
+
+    def export_to_streamlit(self, code_str: str, filename: str = "app.py") -> None:
+        """Write code to a Streamlit app file and launch it."""
+        streamlit_code = self.parse_output(code_str)
+
+        with open(filename, "w") as f:
+            f.write(streamlit_code)
+
+        # Run Streamlit app
+        command = f"streamlit run {filename}"
+        subprocess.Popen(command, shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
+
 
 if __name__ == '__main__':
     engine = PythonDashboardEngine('gpt-4o-mini')
-    print(engine.prompt)
+    output = engine.get_output("""Here are the number of orders per country in 2022:
+
+- **Brasil**: 4005 orders
+- **United States**: 6328 orders
+- **Spain**: 1050 orders
+- **Germany**: 1099 orders
+- **France**: 1274 orders
+- **China**: 9196 orders
+- **Australia**: 590 orders
+- **Colombia**: 7 orders
+- **Japan**: 650 orders
+- **South Korea**: 1551 orders
+- **United Kingdom**: 1195 orders
+- **Belgium**: 369 orders
+- **Poland**: 58 orders
+- **Austria**: 1 order
+
+If you need any further analysis or information, feel free to ask!""")
+    print(output)
+    engine.export_to_streamlit(output)
