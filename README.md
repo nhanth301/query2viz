@@ -10,7 +10,7 @@ No more manual filtering or complex SQL commands—just ask, and the bot provide
 ## System Architecture
 The architecture of the Streamlit LangChain Chatbot consists of a SQL Agent for query generation, a Python Agent for visualization, and a Streamlit interface for interactive chat.  
 
-![System Architecture](imgs/q2v.drawio.png)  
+![System Architecture](imgs/q2vv.drawio.png)  
 *Figure: System Architecture Overview*
 
 ---
