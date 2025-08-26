@@ -1,3 +1,4 @@
 .env
 app.py
 data
+__pycache__
