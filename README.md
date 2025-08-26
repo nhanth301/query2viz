@@ -18,7 +18,7 @@ The architecture of the Streamlit LangChain Chatbot consists of a SQL Agent for 
 ## Demo
 
 <div style="display: flex; gap: 20px;">
-  <img src="imgs/demo.png" alt="Chatbot Demo 1" width="45%">
+  <img src="imgs/demo1.png" alt="Chatbot Demo 1" width="45%">
   <img src="imgs/demo2.png" alt="Chatbot Demo 2" width="45%">
 </div>
 <p style="text-align:center;"><em>Figure: Chatbot Demo with Query and Visualization</em></p>
