@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 graph = build()
 
 st.set_page_config(
-    page_title="Graph Chatbot AI", 
+    page_title="Query2Viz Agent", 
     page_icon="📊", 
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -97,7 +97,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="main-header">📊 Graph Chatbot AI</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-header">📊 Query2Viz Agent</h1>', unsafe_allow_html=True)
 st.markdown(
     '<p class="sub-header">Intelligent AI assistant for creating charts and visualizations through natural conversation</p>', 
     unsafe_allow_html=True
