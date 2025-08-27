@@ -1,4 +1,4 @@
-# Streamlit LangChain Chatbot for SQL Data Exploration
+# QueryViz AI
 
 ## Project Overview
 This project demonstrates the development of a **Streamlit chatbot** integrated with **LangChain** and **OpenAI GPT-4**, enabling natural language interaction with a SQL database. Users can ask questions in plain language, and the chatbot generates SQL queries, retrieves relevant data, and dynamically produces visualizations using Python libraries such as **Matplotlib** or **Plotly**.
